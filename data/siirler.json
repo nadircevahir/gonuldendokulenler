@@ -1,0 +1,18 @@
+[
+  {
+    "id": 1,
+    "title": "Gönül Penceresi",
+    "date": "2023-10-15",
+    "excerpt": "Bir pencere açılır sessizce geceye, gönülden süzülen bir ışık gibi...",
+    "content": "Bir pencere açılır sessizce geceye,\nGönülden süzülen bir ışık gibi.\nYıldızlar fısıldar eski bir heceye,\nRüzgarın getirdiği bir sırdaş gibi.\n\nKaranlık dağılır, ay doğar ansızın,\nSessizlik konuşur kalbin dilinden.\nGeçerken ömründen o ince sızın,\nBir nefes çekersin göğsün derininden.",
+    "featured": true
+  },
+  {
+    "id": 2,
+    "title": "Zamanın İzi",
+    "date": "2024-01-20",
+    "excerpt": "Akıp giden kum taneleri arasında, kaybolan değil, iz bırakan bir ömür...",
+    "content": "Akıp giden kum taneleri arasında,\nKaybolan değil, iz bırakan bir ömür.\nHer çizgi bir hikaye taşır alnında,\nHer bakışta saklıdır bir parça kömür.\n\nDemlenir hayat, bir çay misali,\nAcısı kalır bazen, tadı damağında.\nBir gölge kovalar sanki hayali,\nSonbahar renginde, ömrün bağında.",
+    "featured": false
+  }
+]
