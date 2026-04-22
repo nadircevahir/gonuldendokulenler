@@ -1,0 +1,264 @@
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Yönetim Paneli - Gönülden Dökülenler</title>
+    <link rel="stylesheet" href="css/style.css">
+    <!-- Firebase SDK -->
+    <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-auth-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-storage-compat.js"></script>
+    <style>
+        :root { --admin-bg: #fdfbf7; --admin-card: #ffffff; }
+        body { background-color: var(--admin-bg); min-height: 100vh; }
+        .admin-container { max-width: 900px; margin: 2rem auto; padding: 2rem; }
+        .admin-card { background: var(--admin-card); border: 1px solid rgba(197, 160, 89, 0.3); padding: 2.5rem; box-shadow: 0 10px 30px rgba(0,0,0,0.05); border-radius: 2px; margin-bottom: 2rem; }
+        .login-screen { height: 80vh; display: flex; align-items: center; justify-content: center; }
+        .input-group { margin-bottom: 1.2rem; }
+        label { display: block; font-family: var(--font-ui); font-size: 0.75rem; text-transform: uppercase; letter-spacing: 1px; margin-bottom: 0.5rem; color: var(--color-muted); }
+        input[type="text"], input[type="email"], input[type="password"], input[type="date"], textarea, input[type="file"] { width: 100%; padding: 0.8rem; border: 1px solid #eee; background: #fafafa; font-family: var(--font-body); font-size: 1rem; outline: none; }
+        input:focus, textarea:focus { border-color: var(--color-gold); background: #fff; }
+        .btn-primary { background: var(--color-accent); color: #fff; border: none; padding: 1rem 2rem; font-family: var(--font-ui); text-transform: uppercase; letter-spacing: 2px; cursor: pointer; width: 100%; transition: 0.3s; }
+        .btn-primary:disabled { opacity: 0.5; cursor: not-allowed; }
+        .btn-cancel { background: #999; margin-top: 0.5rem; display: none; }
+        
+        .poem-manager-list { margin-top: 3rem; }
+        .poem-item { display: flex; justify-content: space-between; align-items: center; padding: 1rem; border-bottom: 1px solid #eee; background: #fff; margin-bottom: 0.5rem; }
+        .poem-info { display: flex; align-items: center; gap: 1rem; }
+        .poem-thumb { width: 50px; height: 50px; object-fit: cover; border-radius: 4px; background: #eee; }
+        .poem-actions { display: flex; gap: 0.5rem; }
+        .btn-action { padding: 5px 12px; font-size: 0.7rem; cursor: pointer; border: 1px solid #ddd; background: #fff; }
+        
+        #status-msg { margin-top: 1rem; text-align: center; font-size: 0.9rem; font-weight: bold; }
+        .preview-img { max-width: 200px; margin-top: 10px; display: none; border: 1px solid var(--color-gold); padding: 2px; }
+    </style>
+</head>
+<body>
+
+    <div id="login-area" class="login-screen fade-in">
+        <div class="admin-card" style="width: 100%; max-width: 400px; text-align: center;">
+            <span class="site-subtitle">Yönetici Girişi</span>
+            <h2 style="margin-bottom: 2rem;">Arşiv Konsolu</h2>
+            <div class="input-group"><input type="email" id="login-email" placeholder="E-posta"></div>
+            <div class="input-group"><input type="password" id="login-password" placeholder="Şifre"></div>
+            <button class="btn-primary" onclick="login()">Giriş Yap</button>
+            <p id="login-error" style="color:red; font-size:0.8rem; margin-top:1rem;"></p>
+        </div>
+    </div>
+
+    <div id="admin-area" style="display: none;">
+        <header class="fade-in">
+            <span class="site-subtitle">Yönetim Paneli</span>
+            <h1>İçerik Yöneticisi</h1>
+            <button onclick="logout()" style="background:none; border:none; color:var(--color-muted); cursor:pointer; font-family:var(--font-ui); font-size:0.7rem;">GÜVENLİ ÇIKIŞ</button>
+        </header>
+
+        <main class="admin-container fade-in">
+            <div class="admin-card">
+                <span id="form-mode-title" style="font-family:var(--font-ui); font-size:0.8rem; text-transform:uppercase; letter-spacing:3px; color:var(--color-gold); margin-bottom:1.5rem; display:block; text-align:center;">Yeni Şiir Ekle</span>
+                
+                <div class="input-group">
+                    <label>Şiir Başlığı</label>
+                    <input type="text" id="p-title">
+                </div>
+                
+                <div style="display:grid; grid-template-columns: 1fr 1fr; gap:1rem;">
+                    <div class="input-group">
+                        <label>Tarih</label>
+                        <input type="date" id="p-date">
+                    </div>
+                    <div class="input-group" style="padding-top:1.5rem;">
+                        <label style="cursor:pointer;"><input type="checkbox" id="p-featured"> Öne Çıkar</label>
+                    </div>
+                </div>
+
+                <div class="input-group">
+                    <label>Şiir Görseli</label>
+                    <input type="file" id="p-image" accept="image/*" onchange="previewImage(this)">
+                    <img id="img-preview" class="preview-img">
+                </div>
+
+                <div class="input-group">
+                    <label>Kısa Özet</label>
+                    <textarea id="p-excerpt" rows="2"></textarea>
+                </div>
+                <div class="input-group">
+                    <label>Şiirin Tamamı</label>
+                    <textarea id="p-content" rows="10"></textarea>
+                </div>
+                
+                <button class="btn-primary" id="publish-btn" onclick="publishPoem()">ŞİİRİ YAYINLA</button>
+                <button class="btn-primary btn-cancel" id="cancel-edit-btn" onclick="cancelEdit()">İPTAL ET</button>
+                <p id="status-msg"></p>
+            </div>
+
+            <div class="poem-manager-list">
+                <span style="font-family:var(--font-ui); font-size:0.8rem; text-transform:uppercase; letter-spacing:3px; color:var(--color-gold); margin-bottom:1.5rem; display:block; text-align:center;">Yayınlanmış Şiirler</span>
+                <div id="poem-list-admin"></div>
+            </div>
+        </main>
+    </div>
+
+    <script>
+        const firebaseConfig = {
+            apiKey: "AIzaSyCm3YlXDSs4V5TbvehbesZWAnDK8Yc9ehw",
+            authDomain: "site1-75e42.firebaseapp.com",
+            projectId: "site1-75e42",
+            storageBucket: "site1-75e42.firebasestorage.app",
+            messagingSenderId: "73503340773",
+            appId: "1:73503340773:web:6ae4390f6624b09217fc0c",
+            measurementId: "G-1GCCGY1X7D"
+        };
+
+        firebase.initializeApp(firebaseConfig);
+        const db = firebase.firestore();
+        const auth = firebase.auth();
+        const storage = firebase.storage();
+
+        let editingPoemId = null;
+        let currentImageUrl = "";
+
+        function login() {
+            const email = document.getElementById('login-email').value;
+            const pass = document.getElementById('login-password').value;
+            auth.signInWithEmailAndPassword(email, pass).catch(err => document.getElementById('login-error').innerText = err.message);
+        }
+
+        auth.onAuthStateChanged(user => {
+            if (user) {
+                document.getElementById('login-area').style.display = 'none';
+                document.getElementById('admin-area').style.display = 'block';
+                loadPoemsAdmin();
+            } else {
+                document.getElementById('login-area').style.display = 'flex';
+                document.getElementById('admin-area').style.display = 'none';
+            }
+        });
+
+        function logout() { auth.signOut(); }
+
+        function previewImage(input) {
+            const preview = document.getElementById('img-preview');
+            if (input.files && input.files[0]) {
+                const reader = new FileReader();
+                reader.onload = e => {
+                    preview.src = e.target.result;
+                    preview.style.display = 'block';
+                };
+                reader.readAsDataURL(input.files[0]);
+            }
+        }
+
+        async function loadPoemsAdmin() {
+            const container = document.getElementById('poem-list-admin');
+            const snapshot = await db.collection("siirler").orderBy("date", "desc").get();
+            container.innerHTML = "";
+            snapshot.forEach(doc => {
+                const data = doc.data();
+                const div = document.createElement('div');
+                div.className = 'poem-item';
+                div.innerHTML = `
+                    <div class="poem-info">
+                        <img src="${data.imageUrl || ''}" class="poem-thumb" onerror="this.style.display='none'">
+                        <div>
+                            <h4 style="margin:0; font-family:var(--font-header);">${data.title}</h4>
+                            <span style="font-size:0.7rem; color:#999;">${data.date}</span>
+                        </div>
+                    </div>
+                    <div class="poem-actions">
+                        <button class="btn-action" onclick="prepareEdit('${doc.id}', ${JSON.stringify(data).replace(/"/g, '&quot;')})">Düzenle</button>
+                        <button class="btn-action" style="color:red;" onclick="deletePoem('${doc.id}')">Sil</button>
+                    </div>
+                `;
+                container.appendChild(div);
+            });
+        }
+
+        function prepareEdit(id, data) {
+            editingPoemId = id;
+            currentImageUrl = data.imageUrl || "";
+            document.getElementById('p-title').value = data.title;
+            document.getElementById('p-date').value = data.date;
+            document.getElementById('p-featured').checked = data.featured;
+            document.getElementById('p-excerpt').value = data.excerpt;
+            document.getElementById('p-content').value = data.content;
+            
+            const preview = document.getElementById('img-preview');
+            if(currentImageUrl) {
+                preview.src = currentImageUrl;
+                preview.style.display = 'block';
+            } else {
+                preview.style.display = 'none';
+            }
+
+            document.getElementById('form-mode-title').innerText = "Şiiri Düzenle";
+            document.getElementById('publish-btn').innerText = "KAYDET";
+            document.getElementById('cancel-edit-btn').style.display = "block";
+            window.scrollTo({top: 0, behavior: 'smooth'});
+        }
+
+        function cancelEdit() {
+            editingPoemId = null;
+            currentImageUrl = "";
+            document.querySelectorAll('input:not([type=checkbox]), textarea').forEach(i => i.value = "");
+            document.getElementById('img-preview').style.display = 'none';
+            document.getElementById('form-mode-title').innerText = "Yeni Şiir Ekle";
+            document.getElementById('publish-btn').innerText = "ŞİİRİ YAYINLA";
+            document.getElementById('cancel-edit-btn').style.display = "none";
+        }
+
+        async function deletePoem(id) {
+            if(confirm("Silmek istediğinize emin misiniz?")) {
+                await db.collection("siirler").doc(id).delete();
+                loadPoemsAdmin();
+            }
+        }
+
+        async function publishPoem() {
+            const btn = document.getElementById('publish-btn');
+            const status = document.getElementById('status-msg');
+            const file = document.getElementById('p-image').files[0];
+            
+            btn.disabled = true;
+            status.innerText = "İşlem yapılıyor...";
+
+            try {
+                let imageUrl = currentImageUrl;
+
+                if (file) {
+                    const storageRef = storage.ref(`siirler/${Date.now()}_${file.name}`);
+                    const uploadTask = await storageRef.put(file);
+                    imageUrl = await uploadTask.ref.getDownloadURL();
+                }
+
+                const poemData = {
+                    title: document.getElementById('p-title').value,
+                    date: document.getElementById('p-date').value,
+                    excerpt: document.getElementById('p-excerpt').value,
+                    content: document.getElementById('p-content').value,
+                    featured: document.getElementById('p-featured').checked,
+                    imageUrl: imageUrl,
+                    updatedAt: firebase.firestore.FieldValue.serverTimestamp()
+                };
+
+                if (editingPoemId) {
+                    await db.collection("siirler").doc(editingPoemId).update(poemData);
+                } else {
+                    poemData.createdAt = firebase.firestore.FieldValue.serverTimestamp();
+                    await db.collection("siirler").add(poemData);
+                }
+
+                status.innerText = "✅ Başarıyla kaydedildi!";
+                cancelEdit();
+                loadPoemsAdmin();
+            } catch (err) {
+                status.innerText = "❌ Hata: " + err.message;
+            } finally {
+                btn.disabled = false;
+            }
+        }
+    </script>
+</body>
+</html>
